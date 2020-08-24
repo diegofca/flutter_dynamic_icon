@@ -30,15 +30,22 @@
         if (@available(iOS 10.3, *)) {
             @try {
                 NSString *iconName = call.arguments[@"iconName"];
-                [UIApplication.sharedApplication setAlternateIconName:iconName completionHandler:^(NSError * _Nullable error) {
-                    if(error) {
-                        result([FlutterError errorWithCode:@"Failed to set icon"
-                                                   message:[error description]
-                                                   details:nil]);
-                    } else {
-                        result(nil);
+                if ([[UIApplication sharedApplication] respondsToSelector:@selector(supportsAlternateIcons)] &&
+                    [[UIApplication sharedApplication] supportsAlternateIcons])
+                {
+                    NSMutableString *selectorString = [[NSMutableString alloc] initWithCapacity:40];
+                    [selectorString appendString:@"_setAlternate"];
+                    [selectorString appendString:@"IconName:"];
+                    [selectorString appendString:@"completionHandler:"];
+
+                    SEL selector = NSSelectorFromString(selectorString);
+                    IMP imp = [[UIApplication sharedApplication] methodForSelector:selector];
+                    void (*func)(id, SEL, id, id) = (void *)imp;
+                    if (func)
+                    {
+                        func([UIApplication sharedApplication], selector, iconName, ^(NSError * _Nullable error) {});
                     }
-                }];
+                }
             }
             @catch (NSException *exception) {
                 NSLog(@"%@", exception.reason);
